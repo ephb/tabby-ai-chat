@@ -39,7 +39,13 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Update package.json version
-        run: npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          if [ "$CURRENT_VERSION" != "${{ steps.version.outputs.VERSION }}" ]; then
+            npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version
+          else
+            echo "Version already matches tag, skipping update"
+          fi
 
       - name: Generate changelog
         id: changelog
@@ -60,7 +66,11 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "$COMMITS" >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
-          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${{ steps.version.outputs.VERSION }}" >> RELEASE_NOTES.md
+          if [ -z "$PREV_TAG" ]; then
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/v${{ steps.version.outputs.VERSION }}" >> RELEASE_NOTES.md
+          else
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${{ steps.version.outputs.VERSION }}" >> RELEASE_NOTES.md
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
