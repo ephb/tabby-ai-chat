@@ -1,0 +1,195 @@
+.ai-panel-container(
+    (click)='$event.stopPropagation()',
+    (mousedown)='$event.stopPropagation()',
+    (keydown)='$event.stopPropagation()',
+    (keyup)='$event.stopPropagation()',
+    (keypress)='$event.stopPropagation()'
+)
+    .header
+        .title
+            i.fas.fa-robot.me-2
+            span AI Assistant
+        .flex-grow-1
+        
+        // Model picker dropdown
+        .model-picker(
+            ngbDropdown,
+            container='body',
+            placement='bottom-right'
+        )
+            button.btn.btn-sm.btn-outline-secondary.model-btn(
+                ngbDropdownToggle,
+                title='Select AI model'
+            )
+                i.fas.fa-brain.me-1
+                span.model-name {{currentModelDisplay}}
+                i.fas.fa-chevron-down.ms-1.small
+            .dropdown-menu.model-dropdown(ngbDropdownMenu)
+                .dropdown-header
+                    .d-flex.align-items-center.justify-content-between
+                        span Models
+                        button.btn.btn-link.btn-sm.p-0(
+                            (click)='loadModels(true); $event.stopPropagation()',
+                            title='Refresh models'
+                        )
+                            i.fas.fa-sync-alt([class.fa-spin]='isLoadingModels')
+                .model-search.px-2.pb-2
+                    input.form-control.form-control-sm(
+                        type='text',
+                        [(ngModel)]='modelSearchTerm',
+                        placeholder='Search models...',
+                        (click)='$event.stopPropagation()',
+                        (keydown)='$event.stopPropagation()'
+                    )
+                .model-list
+                    .text-center.py-3(*ngIf='isLoadingModels && availableModels.length === 0')
+                        i.fas.fa-spinner.fa-spin
+                        span.ms-2 Loading...
+                    button.dropdown-item.model-item(
+                        *ngFor='let model of filteredModels',
+                        ngbDropdownItem,
+                        (click)='selectModel(model)',
+                        [class.active]='model.id === modelProvider.currentModel'
+                    )
+                        .model-item-name {{model.name}}
+                        .model-item-id.text-muted.small {{model.id}}
+
+        button.btn.btn-link.btn-sm.clear-btn(
+            (click)='clearChat()',
+            title='Clear chat'
+        )
+            i.fas.fa-trash-alt.me-1
+            span Clear
+        button.btn.btn-link.text-decoration-none((click)='close()')
+            i.fas.fa-times
+
+    .context-bar
+        .context-dropdown(
+            ngbDropdown,
+            container='body',
+            placement='bottom-left'
+        )
+            button.btn.btn-sm.btn-outline-secondary(
+                ngbDropdownToggle
+            )
+                i.fas.fa-paperclip.me-1
+                span {{contextModeLabel}}
+            .dropdown-menu(ngbDropdownMenu)
+                button.dropdown-item(
+                    ngbDropdownItem,
+                    (click)='setContextMode("none")',
+                    [class.active]='contextMode === "none"'
+                ) No context
+                button.dropdown-item(
+                    ngbDropdownItem,
+                    (click)='setContextMode("visible")',
+                    [class.active]='contextMode === "visible"'
+                ) Visible content
+                button.dropdown-item(
+                    ngbDropdownItem,
+                    (click)='setContextMode("lastN")',
+                    [class.active]='contextMode === "lastN"'
+                ) Last {{contextLines}} lines
+                button.dropdown-item(
+                    ngbDropdownItem,
+                    (click)='setContextMode("lastCommand")',
+                    [class.active]='contextMode === "lastCommand"'
+                ) Last command output
+                button.dropdown-item(
+                    ngbDropdownItem,
+                    (click)='setContextMode("selection")',
+                    [class.active]='contextMode === "selection"'
+                ) Current selection
+
+        button.btn.btn-sm.btn-outline-secondary.ms-2(
+            *ngIf='contextMode !== "none"',
+            (click)='refreshContext()',
+            title='Refresh context'
+        )
+            i.fas.fa-sync-alt
+
+        .context-preview.ms-2.text-muted.small(
+            *ngIf='attachedContext',
+            title='Click to toggle preview',
+            (click)='showContextPreview = !showContextPreview'
+        )
+            i.fas.fa-check-circle.text-success.me-1
+            span {{attachedContext.length}} chars attached
+
+    .context-preview-panel(*ngIf='showContextPreview && attachedContext')
+        .preview-header
+            span Context Preview
+            button.btn.btn-link.btn-sm((click)='showContextPreview = false')
+                i.fas.fa-times
+        pre.preview-content {{attachedContext}}
+
+    .messages(#messagesContainer)
+        .message(*ngFor='let msg of messages', [class]='msg.role')
+            .message-header
+                .role
+                    i.fas.fa-user(*ngIf='msg.role === "user"')
+                    i.fas.fa-robot(*ngIf='msg.role === "assistant"')
+                    span.ms-2 {{msg.role === 'user' ? 'You' : 'Assistant'}}
+                .timestamp.text-muted.small {{msg.timestamp | date:'HH:mm'}}
+
+            .message-content(*ngIf='!msg.isStreaming')
+                .markdown-content([innerHTML]='msg.content | aiMarkdown')
+                .command-blocks(*ngIf='msg.role === "assistant" && extractCommands(msg.content).length > 0')
+                    .command-block(*ngFor='let cmd of extractCommands(msg.content)')
+                        code {{cmd}}
+                        .command-actions
+                            button.btn.btn-sm.btn-outline-primary(
+                                (click)='handleInsertCommand(cmd)',
+                                title='Insert into terminal'
+                            )
+                                i.fas.fa-paste
+                            button.btn.btn-sm.btn-outline-success(
+                                (click)='handleExecuteCommand(cmd)',
+                                title='Execute command'
+                            )
+                                i.fas.fa-play
+
+            .message-content.streaming(*ngIf='msg.isStreaming && msg.id === currentStreamingId')
+                .markdown-content([innerHTML]='currentStreamingContent | aiMarkdown')
+                .streaming-indicator
+                    span.dot
+                    span.dot
+                    span.dot
+
+        .empty-state(*ngIf='messages.length === 0')
+            i.fas.fa-comments.fa-3x.text-muted.mb-3
+            p.text-muted Ask me anything about your terminal session
+            .suggestions
+                button.btn.btn-outline-secondary.btn-sm.m-1(
+                    (click)='setInputAndFocus("Explain the last command")'
+                ) Explain the last command
+                button.btn.btn-outline-secondary.btn-sm.m-1(
+                    (click)='setInputAndFocus("How do I...")'
+                ) How do I...
+                button.btn.btn-outline-secondary.btn-sm.m-1(
+                    (click)='setInputAndFocus("Fix this error")'
+                ) Fix this error
+
+    .input-area
+        .loading-indicator(*ngIf='isLoading')
+            button.btn.btn-danger((click)='cancelRequest()')
+                i.fas.fa-stop-circle.me-1
+                span Stop generating
+
+        textarea.form-control.ai-input(
+            #messageInput,
+            [(ngModel)]='inputText',
+            (keydown)='onKeyDown($event)',
+            (keyup)='$event.stopPropagation()',
+            (keypress)='$event.stopPropagation()',
+            (focus)='onInputFocus()',
+            placeholder='Ask about your terminal...',
+            rows='2',
+            [disabled]='isLoading'
+        )
+
+        button.btn.btn-primary.send-btn(
+            (click)='sendMessage()',
+            [disabled]='!inputText.trim() || isLoading'
+        )
+            i.fas.fa-paper-plane

@@ -1,0 +1,68 @@
+.provider-section {
+    border-left: 3px solid var(--theme-primary);
+    padding-left: 15px;
+    margin-left: 10px;
+}
+
+.model-selector {
+    .model-list-container {
+        max-height: 250px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--theme-border);
+        border-radius: 6px;
+        background: var(--theme-bg);
+    }
+
+    .model-list {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 200px;
+    }
+
+    .model-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--theme-border);
+        transition: background 0.15s;
+
+        &:last-child {
+            border-bottom: none;
+        }
+
+        &:hover {
+            background: var(--theme-bg-more);
+        }
+
+        &.active {
+            background: rgba(var(--theme-primary-rgb), 0.15);
+            border-left: 3px solid var(--theme-primary);
+        }
+
+        .model-name {
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .model-id {
+            font-size: 11px;
+            color: var(--theme-fg-muted);
+            font-family: var(--monospace-font);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .current-model {
+        font-family: var(--monospace-font);
+        font-size: 11px;
+    }
+}
+
+textarea.form-control {
+    font-family: var(--monospace-font);
+    font-size: 13px;
+    resize: vertical;
+}

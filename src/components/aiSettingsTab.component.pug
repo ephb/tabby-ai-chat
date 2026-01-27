@@ -1,0 +1,210 @@
+h3 AI Assistant
+
+.form-line
+    .header
+        .title Provider
+        .description Select your AI provider
+    select.form-control(
+        [ngModel]='config.store.aiAssistant.provider',
+        (ngModelChange)='setProvider($event)'
+    )
+        option(value='openrouter') OpenRouter
+        option(value='litellm') LiteLLM / Custom Endpoint
+
+// OpenRouter Settings
+.provider-section(*ngIf='currentProvider === "openrouter"')
+    h4.mt-4.mb-3 OpenRouter Settings
+    
+    .form-line
+        .header
+            .title API Key
+            .description Get your API key from #[a(href='https://openrouter.ai/keys', target='_blank') openrouter.ai/keys]
+        input.form-control(
+            type='password',
+            [(ngModel)]='config.store.aiAssistant.openRouterApiKey',
+            (ngModelChange)='config.save()',
+            placeholder='sk-or-v1-...'
+        )
+
+    .form-line
+        .header
+            .title Model
+            .description Select the AI model to use
+        .model-selector
+            input.form-control.mb-2(
+                type='text',
+                [(ngModel)]='openRouterSearchTerm',
+                placeholder='Search models...'
+            )
+            .model-list-container
+                .text-center.py-3(*ngIf='isLoadingOpenRouterModels')
+                    i.fas.fa-spinner.fa-spin.me-2
+                    span Loading models...
+                .model-list(*ngIf='!isLoadingOpenRouterModels')
+                    .model-option(
+                        *ngFor='let model of filteredOpenRouterModels',
+                        [class.active]='model.id === config.store.aiAssistant.openRouterModel',
+                        (click)='selectOpenRouterModel(model)'
+                    )
+                        .model-name {{model.name}}
+                        .model-id {{model.id}}
+                    .text-muted.text-center.py-2(*ngIf='filteredOpenRouterModels.length === 0 && !isLoadingOpenRouterModels')
+                        | No models found
+            .d-flex.justify-content-between.align-items-center.mt-2
+                .current-model.text-muted.small
+                    | Current: {{config.store.aiAssistant.openRouterModel || 'None selected'}}
+                button.btn.btn-sm.btn-outline-secondary(
+                    (click)='loadOpenRouterModels()',
+                    [disabled]='isLoadingOpenRouterModels'
+                )
+                    i.fas.fa-sync-alt.me-1([class.fa-spin]='isLoadingOpenRouterModels')
+                    | Refresh
+
+// LiteLLM Settings
+.provider-section(*ngIf='currentProvider === "litellm"')
+    h4.mt-4.mb-3 LiteLLM / Custom Endpoint Settings
+
+    .form-line
+        .header
+            .title API Endpoint
+            .description The base URL of your LiteLLM proxy or OpenAI-compatible endpoint
+        input.form-control(
+            type='text',
+            [(ngModel)]='config.store.aiAssistant.litellmEndpoint',
+            (ngModelChange)='config.save()',
+            placeholder='http://localhost:4000/v1'
+        )
+
+    .form-line
+        .header
+            .title API Key
+            .description Optional API key for authentication
+        input.form-control(
+            type='password',
+            [(ngModel)]='config.store.aiAssistant.litellmApiKey',
+            (ngModelChange)='config.save()',
+            placeholder='Optional'
+        )
+
+    .form-line
+        .header
+            .title Model
+            .description Select or enter the model name
+        .model-selector
+            input.form-control.mb-2(
+                type='text',
+                [(ngModel)]='config.store.aiAssistant.litellmModel',
+                (ngModelChange)='config.save()',
+                placeholder='Enter model name or select below...'
+            )
+            .model-list-container(*ngIf='litellmModels.length > 0 || isLoadingLitellmModels')
+                input.form-control.mb-2(
+                    type='text',
+                    [(ngModel)]='litellmSearchTerm',
+                    placeholder='Search models...'
+                )
+                .text-center.py-3(*ngIf='isLoadingLitellmModels')
+                    i.fas.fa-spinner.fa-spin.me-2
+                    span Loading models...
+                .model-list(*ngIf='!isLoadingLitellmModels')
+                    .model-option(
+                        *ngFor='let model of filteredLitellmModels',
+                        [class.active]='model.id === config.store.aiAssistant.litellmModel',
+                        (click)='selectLitellmModel(model)'
+                    )
+                        .model-name {{model.name}}
+            .d-flex.justify-content-end.mt-2
+                button.btn.btn-sm.btn-outline-secondary(
+                    (click)='loadLitellmModels()',
+                    [disabled]='isLoadingLitellmModels'
+                )
+                    i.fas.fa-sync-alt.me-1([class.fa-spin]='isLoadingLitellmModels')
+                    | Fetch Models
+
+// Advanced Settings
+h4.mt-4.mb-3 Advanced Settings
+
+.form-line
+    .header
+        .title Max Tokens
+        .description Maximum number of tokens in the response
+    input.form-control(
+        type='number',
+        [(ngModel)]='config.store.aiAssistant.maxTokens',
+        (ngModelChange)='config.save()',
+        min='256',
+        max='128000'
+    )
+
+.form-line
+    .header
+        .title Temperature
+        .description Controls randomness (0 = deterministic, 1 = creative)
+    .d-flex.align-items-center.gap-2
+        input.form-range.flex-grow-1(
+            type='range',
+            [(ngModel)]='config.store.aiAssistant.temperature',
+            (ngModelChange)='config.save()',
+            min='0',
+            max='1',
+            step='0.1'
+        )
+        span.text-muted {{config.store.aiAssistant.temperature}}
+
+.form-line
+    .header
+        .title Default Context Lines
+        .description Number of terminal lines to include as context
+    input.form-control(
+        type='number',
+        [(ngModel)]='config.store.aiAssistant.defaultContextLines',
+        (ngModelChange)='config.save()',
+        min='10',
+        max='500'
+    )
+
+.form-line
+    .header
+        .title Command Execution
+        .description What happens when you click the execute button on commands
+    select.form-control(
+        [(ngModel)]='config.store.aiAssistant.commandExecution',
+        (ngModelChange)='config.save()'
+    )
+        option(value='insert') Insert into terminal
+        option(value='execute') Execute immediately
+        option(value='ask') Ask before executing
+
+.form-line
+    .header
+        .title Panel Width
+        .description Width of the AI panel as percentage of terminal width
+    .d-flex.align-items-center.gap-2
+        input.form-range.flex-grow-1(
+            type='range',
+            [(ngModel)]='config.store.aiAssistant.panelWidthPercent',
+            (ngModelChange)='config.save()',
+            min='20',
+            max='60',
+            step='5'
+        )
+        span.text-muted {{config.store.aiAssistant.panelWidthPercent}}%
+
+.form-line
+    .header
+        .title Auto-attach Context
+        .description Automatically attach terminal context when opening the panel
+    toggle(
+        [(ngModel)]='config.store.aiAssistant.autoAttachOnOpen',
+        (ngModelChange)='config.save()'
+    )
+
+.form-line
+    .header
+        .title System Prompt
+        .description Customize the AI assistant's behavior
+    textarea.form-control(
+        [(ngModel)]='config.store.aiAssistant.systemPrompt',
+        (ngModelChange)='config.save()',
+        rows='6'
+    )
