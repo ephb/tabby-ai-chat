@@ -1,5 +1,5 @@
 {
-  "name": "tabby-ai-assistant",
+  "name": "@ephb/tabby-ai-assistant",
   "version": "1.0.0",
   "description": "AI Assistant for Tabby - Chat with AI while accessing terminal context",
   "keywords": [
