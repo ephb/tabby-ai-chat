@@ -165,7 +165,7 @@ export class AIAssistantDecorator extends TerminalDecorator {
 
     private executeCommandInTerminal (terminal: BaseTerminalTabComponent<any>, command: string): void {
         // Execute command (add newline to run it)
-        terminal.sendInput(command + '\n')
+        terminal.sendInput(command + '\r')
         terminal.frontend?.focus()
     }
 }
